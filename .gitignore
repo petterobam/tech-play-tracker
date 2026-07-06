@@ -1,0 +1,19 @@
+# 去重数据库（本地运行状态，绝不入库）
+seen.db
+seen.db-journal
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# webhook / 密钥临时导出与本地配置（迁移到 GitHub Secrets，不入库）
+.feishu_wh
+.env
+.env.*
+*.key
+*.pem
+
+# 编辑器/系统
+.DS_Store
+.idea/
+.vscode/
