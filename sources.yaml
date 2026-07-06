@@ -1,0 +1,70 @@
+# ============================================================
+# 科技比赛 / 补贴专项 · 监控源配置
+# ============================================================
+# 改这里就能用。webhook 可直接填，也可留空用环境变量（见 README）。
+
+# 关键词：标题命中任一即推送（支持正则）。完整字典见 04-数据源清单.md
+keywords:
+  - 高新技术企业
+  - 专精特新
+  - 小巨人
+  - 科技型中小企业
+  - 重点研发计划
+  - 科技重大专项
+  - 揭榜挂帅
+  - 创新创业大赛
+  - 创客中国
+  - 挑战杯
+  - 申报指南
+  - 项目申报
+
+# RSS 源（结构化、最省心）
+rss:
+  - name: 深圳盐田政府
+    url: https://www.yantian.gov.cn/rss/
+  - name: 国家统计局
+    url: https://www.stats.gov.cn/wzgl/rss/
+  # 更多 RSS：到你省/市科技厅官网底部找"RSS 订阅"
+
+# 通知页（HTML 抓取，提取页面上的 <a> 链接）
+# item_selector 可选：限定抓取区块的 CSS 选择器；不配则抓全页
+pages:
+  - name: 科技部·科技管理信息系统
+    url: https://service.most.gov.cn/
+  - name: 工业和信息化部
+    url: https://www.miit.gov.cn/
+  - name: 北京市科委
+    url: https://kw.beijing.gov.cn/zwgk/zcwj/
+  - name: 上海市科委
+    url: https://stcsm.sh.gov.cn/zwgk/tzgs/
+  - name: 深圳市科创委
+    url: https://stic.sz.gov.cn/xxgk/tzgg/
+  - name: 国家自然科学基金委
+    url: https://www.nsfc.gov.cn/publish/portal0/tab44/
+
+# 推送通道（任选其一或多；留空表示不启用）
+notify:
+  feishu:
+    webhook: ""        # 走 GitHub Secrets: FEISHU_WEBHOOK
+  dingtalk:
+    webhook: ""        # 钉钉群机器人 webhook
+    secret: ""         # 钉钉加签密钥（机器人安全设置选"加签"时填）
+  wecom:
+    webhook: ""        # 企业微信群机器人 webhook
+  serverchan:
+    key: ""            # Server酱 SendKey（sct.ftqq.com）
+  email:
+    smtp_host: ""      # 如 smtp.qq.com
+    smtp_port: 465
+    smtp_user: ""
+    smtp_pass: ""
+    from: ""
+    to: ""
+
+# 去重数据库
+db: seen.db
+
+# 抓取设置
+fetch:
+  timeout: 20
+  per_source_limit: 30   # 每个源最多取最近 N 条
