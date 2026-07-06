@@ -11,6 +11,8 @@ on:
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 允许 GITHUB_TOKEN 把生成的报告 push 回仓库
     steps:
       - uses: actions/checkout@v4
 
@@ -40,3 +42,15 @@ jobs:
           DINGTALK_SECRET: ${{ secrets.DINGTALK_SECRET }}
           WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
           SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+
+      - name: 提交 markdown 报告到仓库
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/ 2>/dev/null || true
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(report): 自动监控报告"
+            git push
+          else
+            echo "无新报告，跳过提交"
+          fi
