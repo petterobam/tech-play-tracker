@@ -168,31 +168,90 @@ def _email(subject: str, body: str, cfg: dict) -> None:
         s.sendmail(cfg["from"], cfg["to"].split(","), msg.as_string())
 
 
-def notify_all(cfg: dict, hits: list[Item]) -> None:
-    title = f"🔔 政策/赛事监控：命中 {len(hits)} 条新通知"
-    lines = [title, ""]
-    for i, h in enumerate(hits, 1):
-        lines += [f"{i}. [{h.source}] {h.title}", f"   {h.url}"]
-    text = "\n".join(lines)
+def generate_report(hits: list[Item]) -> str:
+    """把命中写成 markdown 报告（按来源分组），返回相对路径 reports/...md。"""
+    from datetime import datetime, timezone
+    ts = os.environ.get("REPORT_TS") or datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M")
+    path = f"reports/{ts}.md"
+    os.makedirs("reports", exist_ok=True)
+    by_src: dict[str, list[Item]] = {}
+    for h in hits:
+        by_src.setdefault(h.source, []).append(h)
+    lines = [
+        "# 政策/赛事监控报告",
+        "",
+        f"> 生成时间（UTC）：{ts} ｜ 命中 **{len(hits)}** 条 ｜ 来源 **{len(by_src)}** 个",
+        "",
+    ]
+    for src, items in by_src.items():
+        lines += ["", f"## {src}（{len(items)}）", ""]
+        for i, it in enumerate(items, 1):
+            lines.append(f"{i}. [{it.title}]({it.url})")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    return path
+
+
+def report_url(path: str) -> str:
+    """拼报告链接：CI 里用 GitHub blob URL，否则返回本地路径。"""
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    if repo:
+        base = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+        branch = os.environ.get("GITHUB_REF_NAME", "main")
+        return f"{base}/{repo}/blob/{branch}/{path}"
+    return path
+
+
+def _feishu_card(webhook: str, total: int, hits: list[Item], report_link: str) -> None:
+    """飞书交互卡片：总数 + 前 3 条（可点）+ 报告链接，避免长文本刷屏。"""
+    top = hits[:3]
+    elements = [{"tag": "div", "text": {"tag": "lark_md",
+                "content": f"本次命中 **{total}** 条新通知，详情见报告。"}}]
+    if top:
+        body = "\n".join(f"{i}. [{h.title}]({h.url})" for i, h in enumerate(top, 1))
+        elements.append({"tag": "div", "text": {"tag": "lark_md", "content": body}})
+    elements.append({"tag": "hr"})
+    elements.append({"tag": "div", "text": {"tag": "lark_md",
+                    "content": f"📄 完整报告（{total} 条）：{report_link}"}})
+    payload = {"msg_type": "interactive", "card": {
+        "header": {"title": {"tag": "plain_text", "content": "🔔 政策/赛事监控"}},
+        "elements": elements,
+    }}
+    _post_json(webhook, payload)
+
+
+def notify_all(cfg: dict, hits: list[Item]) -> str:
+    """生成 markdown 报告 → 飞书发精简卡片，其他通道发摘要文本（含报告链接）。返回报告路径。"""
+    report_path = generate_report(hits)
+    rurl = report_url(report_path)
+    print(f"[info] 报告已生成：{report_path}  链接：{rurl}")
+    total = len(hits)
+    title = f"🔔 政策/赛事监控：命中 {total} 条新通知"
+    top = hits[:3]
+    short = [title, "", f"前 {len(top)} 条："]
+    for i, h in enumerate(top, 1):
+        short.append(f"{i}. {h.title}")
+    short += ["", f"📄 完整 {total} 条报告：{rurl}"]
+    short_text = "\n".join(short)
 
     notify = cfg.get("notify", {}) or {}
     env = os.environ
 
     wh = env.get("FEISHU_WEBHOOK") or (notify.get("feishu") or {}).get("webhook")
     if wh:
-        _feishu(text, wh)
+        _feishu_card(wh, total, hits, rurl)
     dw = env.get("DINGTALK_WEBHOOK") or (notify.get("dingtalk") or {}).get("webhook")
     if dw:
-        _dingtalk(text, dw, env.get("DINGTALK_SECRET") or (notify.get("dingtalk") or {}).get("secret", ""))
+        _dingtalk(short_text, dw, env.get("DINGTALK_SECRET") or (notify.get("dingtalk") or {}).get("secret", ""))
     ww = env.get("WECOM_WEBHOOK") or (notify.get("wecom") or {}).get("webhook")
     if ww:
-        _wecom(text, ww)
+        _wecom(short_text, ww)
     sk = env.get("SERVERCHAN_KEY") or (notify.get("serverchan") or {}).get("key")
     if sk:
-        _serverchan(title, text, sk)
+        _serverchan(title, short_text, sk)
     em = notify.get("email") or {}
     if env.get("SMTP_HOST") or em.get("smtp_host"):
-        _email(title, text, {
+        _email(title, short_text, {
             "smtp_host": env.get("SMTP_HOST", em.get("smtp_host")),
             "smtp_port": env.get("SMTP_PORT", em.get("smtp_port", 465)),
             "smtp_user": env.get("SMTP_USER", em.get("smtp_user")),
@@ -200,6 +259,7 @@ def notify_all(cfg: dict, hits: list[Item]) -> None:
             "from": env.get("MAIL_FROM", em.get("from")),
             "to": env.get("MAIL_TO", em.get("to")),
         })
+    return report_path
 
 
 # ----------------------------- 编排 -----------------------------
