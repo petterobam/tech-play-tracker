@@ -93,15 +93,18 @@ def fetch_page(name: str, url: str, limit: int,
         root = soup
     items, seen = [], set()
     for a in root.select(link_selector)[:200]:
-        title = a.get_text(strip=True)
-        href = a.get("href", "").strip()
-        if len(title) < 6 or not href:
+        # 只取 a 内第一行文本：有些站点把标题+正文/口号塞进同一个 <a>，
+        # get_text 会带换行，污染 markdown 链接 [title](url) 致渲染断裂
+        raw = a.get_text(separator="\n", strip=True)
+        title = next((ln.strip() for ln in raw.split("\n") if ln.strip()), "")
+        href = (a.get("href") or "").strip()
+        if len(title) < 6 or not href or href.startswith(("javascript:", "#")):
             continue
         href = urllib.parse.urljoin(url, href)
         if href in seen:
             continue
         seen.add(href)
-        items.append(Item(source=name, title=title, url=href))
+        items.append(Item(source=name, title=title[:200], url=href))
     return items[:limit]
 
 
