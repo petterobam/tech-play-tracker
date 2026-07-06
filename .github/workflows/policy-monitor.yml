@@ -1,0 +1,32 @@
+name: policy-monitor
+
+# 免服务器定时跑：每天北京时间约 08:00 跑一次
+# （UTC 00:03，刻意错开整点高峰，GitHub cron 触发更稳；实际命中约 08:00–08:20）
+# 也可在 Actions 页面手动触发（workflow_dispatch）。
+on:
+  schedule:
+    - cron: "3 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run monitor
+        run: python monitor.py --config sources.yaml
+        # webhook 走环境变量，避免写进配置文件泄露
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+          DINGTALK_SECRET: ${{ secrets.DINGTALK_SECRET }}
+          WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
