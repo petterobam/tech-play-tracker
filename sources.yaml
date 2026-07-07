@@ -71,18 +71,14 @@ pages:
     url: https://kw.beijing.gov.cn/zwgk/zcwj/
   - name: 上海市科委
     url: https://stcsm.sh.gov.cn/zwgk/tzgs/
-  - name: 深圳市科创委
-    url: https://stic.sz.gov.cn/xxgk/tzgg/
   # —— 科技部系赛事 ——
   - name: 中国创新创业大赛
     url: http://www.cxcyds.com/
   - name: 全国颠覆性技术创新大赛
     url: https://www.dipa.cn/
   # —— 工信部系赛事 ——
-  - name: 创客中国
-    url: http://www.cncxcyds.com/
-  - name: 中国软件杯
-    url: https://www.cnsoftbei.com/
+  # 注：创客中国(cncxcyds.com DNS失败)、中国软件杯(cnsoftbei.com 连接被关)
+  #     在 GitHub runner 上始终抓不到，已摘除；其通知由工信部通知页兜底
   - name: 绽放杯5G应用征集大赛
     url: https://www.5gaia.org.cn/
   # —— 教育部系赛事 ——
